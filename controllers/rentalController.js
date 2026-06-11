@@ -11,11 +11,10 @@ const sendError = (res, statusCode, message) => {
   });
 };
 
-const sendSuccess = (res, statusCode, message, data = null, extra = {}) => {
+const sendSuccess = (res, statusCode, message, data = null) => {
   const response = {
     success: true,
-    message,
-    ...extra
+    message
   };
 
   if (data !== null) response.data = data;
@@ -110,8 +109,6 @@ const getUserRentalHistory = async (req, res) => {
 };
 
 const createRental = async (req, res) => {
-  let createdRentalId = null;
-
   try {
     const missingMessage = validateRequiredFields(req.body, REQUIRED_RENTAL_FIELDS);
     if (missingMessage) return sendError(res, 400, missingMessage);
@@ -159,19 +156,12 @@ const createRental = async (req, res) => {
       pickup_verified_at: now
     });
 
-    createdRentalId = createdRental.id;
-
-    // Keep vehicle availability accurate even when no database trigger handles rental creation.
     await rentalService.updateVehicleStatus(vehicleId, 'rented');
 
-    const rentalDetail = await rentalService.getRentalDetailById(createdRental.id).catch(() => null);
+    const rentalDetail = await rentalService.getRentalDetailById(createdRental.id);
 
-    return sendSuccess(res, 201, 'Rental created successfully', rentalDetail || createdRental);
+    return sendSuccess(res, 201, 'Rental created successfully', rentalDetail);
   } catch (error) {
-    if (createdRentalId) {
-      await rentalService.updateRental(createdRentalId, { rental_status: 'cancelled' }).catch(() => null);
-    }
-
     return sendError(res, 500, error.message || 'Failed to create rental');
   }
 };
@@ -190,7 +180,7 @@ const returnRental = async (req, res) => {
 
     const now = new Date().toISOString();
 
-    const updatedRental = await rentalService.updateRental(req.params.id, {
+    await rentalService.updateRental(req.params.id, {
       actual_return_date: now,
       return_verified_at: now,
       rental_status: 'returned'
@@ -198,7 +188,7 @@ const returnRental = async (req, res) => {
 
     const rentalDetail = await rentalService.getRentalDetailById(req.params.id);
 
-    return sendSuccess(res, 200, 'Rental returned successfully', rentalDetail || updatedRental);
+    return sendSuccess(res, 200, 'Rental returned successfully', rentalDetail);
   } catch (error) {
     return sendError(res, 500, error.message || 'Failed to return rental');
   }
@@ -216,15 +206,15 @@ const cancelRental = async (req, res) => {
       return sendError(res, 400, 'Only active rentals can be cancelled');
     }
 
-    const updatedRental = await rentalService.updateRental(req.params.id, {
+    await rentalService.updateRental(req.params.id, {
       rental_status: 'cancelled'
     });
 
-    await rentalService.updateVehicleStatus(rental.vehicle_id, 'available').catch(() => null);
+    await rentalService.updateVehicleStatus(rental.vehicle_id, 'available');
 
     const rentalDetail = await rentalService.getRentalDetailById(req.params.id);
 
-    return sendSuccess(res, 200, 'Rental cancelled successfully', rentalDetail || updatedRental);
+    return sendSuccess(res, 200, 'Rental cancelled successfully', rentalDetail);
   } catch (error) {
     return sendError(res, 500, error.message || 'Failed to cancel rental');
   }
@@ -248,7 +238,7 @@ const verifyVehicle = async (req, res) => {
       return sendError(res, 404, 'Vehicle not found');
     }
 
-    return sendSuccess(res, 200, 'Vehicle verified successfully', vehicle, { vehicle });
+    return sendSuccess(res, 200, 'Vehicle verified successfully', vehicle);
   } catch (error) {
     return sendError(res, 500, error.message || 'Failed to verify vehicle');
   }

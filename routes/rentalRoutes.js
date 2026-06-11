@@ -5,6 +5,13 @@ const router = express.Router();
 
 /**
  * @swagger
+ * tags:
+ *   name: Rentals
+ *   description: Rental management API
+ */
+
+/**
+ * @swagger
  * /api/rentals:
  *   get:
  *     summary: Get all rentals
@@ -23,6 +30,9 @@ const router = express.Router();
  *         description: Invalid status value
  *       500:
  *         description: Internal server error
+ *     responses:
+ *       200:
+ *         description: List of rentals
  */
 router.get('/', rentalController.getAllRentals);
 
@@ -68,6 +78,9 @@ router.get('/history/:userId', rentalController.getUserRentalHistory);
  * /api/rentals/user/{userId}:
  *   get:
  *     summary: Get user rental history by User ID (alternative path)
+ * /api/rentals/user/{userId}:
+ *   get:
+ *     summary: Get rental history for a user
  *     tags: [Rentals]
  *     parameters:
  *       - in: path
@@ -130,7 +143,7 @@ router.post('/', rentalController.createRental);
  * @swagger
  * /api/rentals/verify-vehicle:
  *   post:
- *     summary: Verify vehicle status before rental
+ *     summary: Verify vehicle availability
  *     tags: [Rentals]
  *     requestBody:
  *       required: true
@@ -159,7 +172,7 @@ router.post('/verify-vehicle', rentalController.verifyVehicle);
  * @swagger
  * /api/rentals/{id}:
  *   get:
- *     summary: Get rental detail by ID
+ *     summary: Get rental by ID
  *     tags: [Rentals]
  *     parameters:
  *       - in: path

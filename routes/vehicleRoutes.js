@@ -6,6 +6,13 @@ const router = express.Router();
 
 /**
  * @swagger
+ * tags:
+ *   name: Vehicles
+ *   description: Vehicle management API
+ */
+
+/**
+ * @swagger
  * /api/vehicles:
  *   get:
  *     summary: Retrieve a list of all vehicles
@@ -16,13 +23,14 @@ const router = express.Router();
  *       500:
  *         description: Internal server error
  */
+
 router.get('/', vehicleController.getAllVehicles);
 
 /**
  * @swagger
  * /api/vehicles/{id}:
  *   get:
- *     summary: Get vehicle detail by ID
+ *     summary: Get vehicle by ID
  *     tags: [Vehicles]
  *     parameters:
  *       - in: path
