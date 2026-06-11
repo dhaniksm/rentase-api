@@ -1,5 +1,5 @@
 const path = require('path');
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 const supabase = require('../config/supabase');
 
 const TABLE_NAME = 'vehicles';
@@ -108,7 +108,7 @@ const deleteVehicleRecord = async (id) => {
 };
 
 const uploadVehicleImage = async (file) => {
-  const fileName = `${Date.now()}-${uuidv4()}-${sanitizeFileName(file.originalname)}`;
+  const fileName = `${Date.now()}-${randomUUID()}-${sanitizeFileName(file.originalname)}`;
   const filePath = `${IMAGE_FOLDER}/${fileName}`;
 
   const { error } = await supabase.storage.from(BUCKET_NAME).upload(filePath, file.buffer, {
