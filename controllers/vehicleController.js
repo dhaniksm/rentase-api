@@ -1,4 +1,5 @@
 const vehicleService = require('../services/vehicleService');
+const rentalService = require('../services/rentalService');
 const { generateVehicleQRCode } = require('../utils/qrGenerator');
 
 const REQUIRED_FIELDS = ['vehicle_name', 'brand', 'vehicle_type', 'plate_number', 'price_per_day'];
@@ -11,10 +12,11 @@ const sendError = (res, statusCode, message) => {
   });
 };
 
-const sendSuccess = (res, statusCode, message, data = null) => {
+const sendSuccess = (res, statusCode, message, data = null, extra = {}) => {
   const response = {
     success: true,
-    message
+    message,
+    ...extra
   };
 
   if (data !== null) response.data = data;
@@ -253,11 +255,74 @@ const updateVehicleStatus = async (req, res) => {
   }
 };
 
+const getVehicleRentalHistory = async (req, res) => {
+  try {
+    const { id: vehicleId } = req.params;
+
+    const vehicle = await vehicleService.getVehicleById(vehicleId);
+    if (!vehicle) {
+      return sendError(res, 404, 'Vehicle not found');
+    }
+
+    const status = normalizeString(req.query.status);
+    const search = normalizeString(req.query.search);
+    const sortBy = normalizeString(req.query.sortBy) || 'created_at';
+    const sortOrder = normalizeString(req.query.sortOrder) || 'desc';
+
+    let page = req.query.page ? parseInt(req.query.page, 10) : undefined;
+    let limit = req.query.limit ? parseInt(req.query.limit, 10) : undefined;
+
+    const ALLOWED_RENTAL_STATUS = ['active', 'returned', 'late', 'cancelled'];
+    if (status && !ALLOWED_RENTAL_STATUS.includes(status)) {
+      return sendError(res, 400, `status must be one of: ${ALLOWED_RENTAL_STATUS.join(', ')}`);
+    }
+    if (sortOrder && !['asc', 'desc'].includes(sortOrder.toLowerCase())) {
+      return sendError(res, 400, 'sortOrder must be either asc or desc');
+    }
+    if (page !== undefined && (Number.isNaN(page) || page <= 0)) {
+      return sendError(res, 400, 'page must be a positive integer');
+    }
+    if (limit !== undefined && (Number.isNaN(limit) || limit <= 0)) {
+      return sendError(res, 400, 'limit must be a positive integer');
+    }
+
+    const options = {
+      status,
+      search,
+      sortBy,
+      sortOrder: sortOrder.toLowerCase(),
+      page,
+      limit
+    };
+
+    if (page && limit) {
+      const { data, count } = await rentalService.getRentalsByVehicleId(vehicleId, options);
+      const totalItems = count || 0;
+      const totalPages = Math.ceil(totalItems / limit);
+
+      return sendSuccess(res, 200, 'Vehicle rental history retrieved successfully', data, {
+        pagination: {
+          totalItems,
+          totalPages,
+          currentPage: page,
+          limit
+        }
+      });
+    }
+
+    const rentals = await rentalService.getRentalsByVehicleId(vehicleId, options);
+    return sendSuccess(res, 200, 'Vehicle rental history retrieved successfully', rentals);
+  } catch (error) {
+    return sendError(res, 500, error.message || 'Failed to get vehicle rental history');
+  }
+};
+
 module.exports = {
   getAllVehicles,
   getVehicleById,
   createVehicle,
   updateVehicle,
   deleteVehicle,
-  updateVehicleStatus
+  updateVehicleStatus,
+  getVehicleRentalHistory
 };

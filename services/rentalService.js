@@ -4,20 +4,42 @@ const RENTALS_TABLE = 'rentals';
 const VEHICLES_TABLE = 'vehicles';
 const RENTAL_DETAILS_VIEW = 'rental_details';
 
-const getAllRentals = async ({ status } = {}) => {
-  let query = supabase
-    .from(RENTAL_DETAILS_VIEW)
-    .select('*')
-    .order('created_at', { ascending: false });
-
+const applyRentalFilters = (query, { status, search, sortBy, sortOrder, page, limit } = {}) => {
   if (status) {
     query = query.eq('rental_status', status);
   }
 
-  const { data, error } = await query;
+  if (search) {
+    const escapedSearch = search.replace(/[(),]/g, ' ').trim();
+    query = query.or(
+      `vehicle_name.ilike.%${escapedSearch}%,brand.ilike.%${escapedSearch}%,plate_number.ilike.%${escapedSearch}%`
+    );
+  }
+
+  const sortColumn = sortBy || 'created_at';
+  const ascending = sortOrder === 'asc';
+  query = query.order(sortColumn, { ascending });
+
+  if (page && limit) {
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+    query = query.range(from, to);
+  }
+
+  return query;
+};
+
+const getAllRentals = async ({ status, search, sortBy, sortOrder, page, limit } = {}) => {
+  let query = supabase
+    .from(RENTAL_DETAILS_VIEW)
+    .select('*', { count: page && limit ? 'exact' : 'estimated' });
+
+  query = applyRentalFilters(query, { status, search, sortBy, sortOrder, page, limit });
+
+  const { data, error, count } = await query;
 
   if (error) throw error;
-  return data;
+  return page && limit ? { data, count } : data;
 };
 
 const getRentalDetailById = async (id) => {
@@ -76,9 +98,12 @@ const normalizeHistoryRecord = (record) => {
 const getRentalHistoryByUserId = async (userId, { status, includeActive = false, limit, offset } = {}) => {
   let query = supabase
     .from(RENTAL_DETAILS_VIEW)
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false });
+    .select('*', { count: page && limit ? 'exact' : 'estimated' })
+    .eq('user_id', userId);
+
+  query = applyRentalFilters(query, { status, search, sortBy, sortOrder, page, limit });
+
+  const { data, error, count } = await query;
 
   if (status) {
     query = query.eq('rental_status', status);
@@ -94,6 +119,21 @@ const getRentalHistoryByUserId = async (userId, { status, includeActive = false,
   const { data, error } = await query;
 
   if (error) throw error;
+  return page && limit ? { data, count } : data;
+};
+
+const getRentalsByVehicleId = async (vehicleId, { status, search, sortBy, sortOrder, page, limit } = {}) => {
+  let query = supabase
+    .from(RENTAL_DETAILS_VIEW)
+    .select('*', { count: page && limit ? 'exact' : 'estimated' })
+    .eq('vehicle_id', vehicleId);
+
+  query = applyRentalFilters(query, { status, search, sortBy, sortOrder, page, limit });
+
+  const { data, error, count } = await query;
+
+  if (error) throw error;
+  return page && limit ? { data, count } : data;
   return (data || []).map(normalizeHistoryRecord);
 };
 
@@ -173,6 +213,7 @@ module.exports = {
   getActiveRentals,
   getRentalHistoryByUserId,
   getRentalsByUserId,
+  getRentalsByVehicleId,
   getVehicleById,
   getVehicleForVerification,
   createRental,
