@@ -15,12 +15,15 @@ const router = express.Router();
  * @swagger
  * /api/vehicles:
  *   get:
- *     summary: Get all vehicles
+ *     summary: Retrieve a list of all vehicles
  *     tags: [Vehicles]
  *     responses:
  *       200:
- *         description: List of vehicles
+ *         description: A list of vehicles retrieved successfully
+ *       500:
+ *         description: Internal server error
  */
+
 router.get('/', vehicleController.getAllVehicles);
 
 /**
@@ -35,9 +38,14 @@ router.get('/', vehicleController.getAllVehicles);
  *         required: true
  *         schema:
  *           type: string
+ *         description: The vehicle ID
  *     responses:
  *       200:
- *         description: Vehicle details
+ *         description: Vehicle detail retrieved successfully
+ *       404:
+ *         description: Vehicle not found
+ *       500:
+ *         description: Internal server error
  */
 router.get('/:id', vehicleController.getVehicleById);
 
@@ -54,12 +62,26 @@ router.get('/:id', vehicleController.getVehicleById);
  *           schema:
  *             type: object
  *             properties:
+ *               vehicle_name:
+ *                 type: string
+ *               brand:
+ *                 type: string
+ *               vehicle_type:
+ *                 type: string
+ *               plate_number:
+ *                 type: string
+ *               price_per_day:
+ *                 type: integer
  *               image:
  *                 type: string
  *                 format: binary
  *     responses:
  *       201:
  *         description: Vehicle created successfully
+ *       400:
+ *         description: Missing required fields
+ *       500:
+ *         description: Internal server error
  */
 router.post('/', upload.single('image'), handleUploadError, vehicleController.createVehicle);
 
@@ -75,6 +97,7 @@ router.post('/', upload.single('image'), handleUploadError, vehicleController.cr
  *         required: true
  *         schema:
  *           type: string
+ *         description: The vehicle ID
  *     requestBody:
  *       required: true
  *       content:
@@ -82,12 +105,26 @@ router.post('/', upload.single('image'), handleUploadError, vehicleController.cr
  *           schema:
  *             type: object
  *             properties:
+ *               vehicle_name:
+ *                 type: string
+ *               brand:
+ *                 type: string
+ *               vehicle_type:
+ *                 type: string
+ *               plate_number:
+ *                 type: string
+ *               price_per_day:
+ *                 type: integer
  *               image:
  *                 type: string
  *                 format: binary
  *     responses:
  *       200:
  *         description: Vehicle updated successfully
+ *       404:
+ *         description: Vehicle not found
+ *       500:
+ *         description: Internal server error
  */
 router.put('/:id', upload.single('image'), handleUploadError, vehicleController.updateVehicle);
 
@@ -103,9 +140,26 @@ router.put('/:id', upload.single('image'), handleUploadError, vehicleController.
  *         required: true
  *         schema:
  *           type: string
+ *         description: The vehicle ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [available, rented, maintenance]
  *     responses:
  *       200:
- *         description: Vehicle status updated
+ *         description: Vehicle status updated successfully
+ *       400:
+ *         description: Invalid status value
+ *       404:
+ *         description: Vehicle not found
+ *       500:
+ *         description: Internal server error
  */
 router.patch('/:id/status', vehicleController.updateVehicleStatus);
 
@@ -121,9 +175,14 @@ router.patch('/:id/status', vehicleController.updateVehicleStatus);
  *         required: true
  *         schema:
  *           type: string
+ *         description: The vehicle ID
  *     responses:
  *       200:
  *         description: Vehicle deleted successfully
+ *       404:
+ *         description: Vehicle not found
+ *       500:
+ *         description: Internal server error
  */
 router.delete('/:id', vehicleController.deleteVehicle);
 

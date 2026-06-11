@@ -4,6 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const vehicleRoutes = require('../routes/vehicleRoutes');
 const rentalRoutes = require('../routes/rentalRoutes');
+const paymentRoutes = require('../routes/paymentRoutes');
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("../swagger");
 
@@ -13,6 +14,7 @@ app.use(cors());
 app.use(express.json());
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/rentals', rentalRoutes);
+app.use('/api/payments', paymentRoutes);
 
 app.use(
   "/api-docs",

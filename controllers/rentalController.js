@@ -168,7 +168,7 @@ const createRental = async (req, res) => {
 
 const returnRental = async (req, res) => {
   try {
-    const rental = await rentalService.getRentalById(req.params.id);
+    const rental = await rentalService.getRentalById(rebq.params.id);
 
     if (!rental) {
       return sendError(res, 404, 'Rental not found');
