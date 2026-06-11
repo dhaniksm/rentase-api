@@ -24,5 +24,13 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dhaniksm/rentase-api.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dhaniksm/rentase-api/issues"
+  },
+  "homepage": "https://github.com/dhaniksm/rentase-api#readme"
 }

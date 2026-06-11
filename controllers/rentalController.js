@@ -53,15 +53,68 @@ const calculateTotalDays = (startDate, expectedReturnDate) => {
   return Math.ceil(diffInMs / DAY_IN_MS);
 };
 
+const parsePaginationAndFilterParams = (query) => {
+  const status = normalizeString(query.status);
+  const search = normalizeString(query.search);
+  const sortBy = normalizeString(query.sortBy) || 'created_at';
+  const sortOrder = normalizeString(query.sortOrder) || 'desc';
+
+  let page = query.page ? parseInt(query.page, 10) : undefined;
+  let limit = query.limit ? parseInt(query.limit, 10) : undefined;
+
+  // Validate status if present
+  if (status && !ALLOWED_RENTAL_STATUS.includes(status)) {
+    throw new Error(`status must be one of: ${ALLOWED_RENTAL_STATUS.join(', ')}`);
+  }
+
+  // Validate sortOrder
+  if (sortOrder && !['asc', 'desc'].includes(sortOrder.toLowerCase())) {
+    throw new Error('sortOrder must be either asc or desc');
+  }
+
+  // Validate pagination numbers if present
+  if (page !== undefined && (Number.isNaN(page) || page <= 0)) {
+    throw new Error('page must be a positive integer');
+  }
+  if (limit !== undefined && (Number.isNaN(limit) || limit <= 0)) {
+    throw new Error('limit must be a positive integer');
+  }
+
+  return {
+    status,
+    search,
+    sortBy,
+    sortOrder: sortOrder.toLowerCase(),
+    page,
+    limit
+  };
+};
+
 const getAllRentals = async (req, res) => {
   try {
-    const status = normalizeString(req.query.status);
-
-    if (status && !ALLOWED_RENTAL_STATUS.includes(status)) {
-      return sendError(res, 400, `status must be one of: ${ALLOWED_RENTAL_STATUS.join(', ')}`);
+    let options;
+    try {
+      options = parsePaginationAndFilterParams(req.query);
+    } catch (validationErr) {
+      return sendError(res, 400, validationErr.message);
     }
 
-    const rentals = await rentalService.getAllRentals({ status });
+    if (options.page && options.limit) {
+      const { data, count } = await rentalService.getAllRentals(options);
+      const totalItems = count || 0;
+      const totalPages = Math.ceil(totalItems / options.limit);
+
+      return sendSuccess(res, 200, 'Rentals retrieved successfully', data, {
+        pagination: {
+          totalItems,
+          totalPages,
+          currentPage: options.page,
+          limit: options.limit
+        }
+      });
+    }
+
+    const rentals = await rentalService.getAllRentals(options);
 
     return sendSuccess(res, 200, 'Rentals retrieved successfully', rentals);
   } catch (error) {
@@ -101,7 +154,29 @@ const getUserRentalHistory = async (req, res) => {
       return sendError(res, 400, 'userId must be a valid uuid');
     }
 
-    const rentals = await rentalService.getRentalsByUserId(userId);
+    let options;
+    try {
+      options = parsePaginationAndFilterParams(req.query);
+    } catch (validationErr) {
+      return sendError(res, 400, validationErr.message);
+    }
+
+    if (options.page && options.limit) {
+      const { data, count } = await rentalService.getRentalsByUserId(userId, options);
+      const totalItems = count || 0;
+      const totalPages = Math.ceil(totalItems / options.limit);
+
+      return sendSuccess(res, 200, 'User rental history retrieved successfully', data, {
+        pagination: {
+          totalItems,
+          totalPages,
+          currentPage: options.page,
+          limit: options.limit
+        }
+      });
+    }
+
+    const rentals = await rentalService.getRentalsByUserId(userId, options);
 
     return sendSuccess(res, 200, 'User rental history retrieved successfully', rentals);
   } catch (error) {

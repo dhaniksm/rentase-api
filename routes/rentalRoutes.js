@@ -4,6 +4,7 @@ const rentalController = require('../controllers/rentalController');
 const router = express.Router();
 
 router.get('/', rentalController.getAllRentals);
+router.get('/history', rentalController.getAllRentals);
 router.get('/active', rentalController.getActiveRentals);
 router.get('/user/:userId', rentalController.getUserRentalHistory);
 router.post('/', rentalController.createRental);
