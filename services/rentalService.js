@@ -95,7 +95,7 @@ const normalizeHistoryRecord = (record) => {
   };
 };
 
-const getRentalHistoryByUserId = async (userId, { status, includeActive = false, limit, offset } = {}) => {
+const getRentalHistoryByUserId = async (userId, { status, search, sortBy, sortOrder, page, limit, includeActive = false } = {}) => {
   let query = supabase
     .from(RENTAL_DETAILS_VIEW)
     .select('*', { count: page && limit ? 'exact' : 'estimated' })
@@ -103,23 +103,16 @@ const getRentalHistoryByUserId = async (userId, { status, includeActive = false,
 
   query = applyRentalFilters(query, { status, search, sortBy, sortOrder, page, limit });
 
-  const { data, error, count } = await query;
-
-  if (status) {
-    query = query.eq('rental_status', status);
-  } else if (!includeActive) {
+  if (!status && !includeActive) {
     query = query.neq('rental_status', 'active');
   }
 
-  if (Number.isInteger(limit) && limit > 0) {
-    const start = Number.isInteger(offset) && offset > 0 ? offset : 0;
-    query = query.range(start, start + limit - 1);
-  }
-
-  const { data, error } = await query;
+  const { data, error, count } = await query;
 
   if (error) throw error;
-  return page && limit ? { data, count } : data;
+
+  const formattedData = (data || []).map(normalizeHistoryRecord);
+  return page && limit ? { data: formattedData, count } : formattedData;
 };
 
 const getRentalsByVehicleId = async (vehicleId, { status, search, sortBy, sortOrder, page, limit } = {}) => {
@@ -133,8 +126,9 @@ const getRentalsByVehicleId = async (vehicleId, { status, search, sortBy, sortOr
   const { data, error, count } = await query;
 
   if (error) throw error;
-  return page && limit ? { data, count } : data;
-  return (data || []).map(normalizeHistoryRecord);
+
+  const formattedData = (data || []).map(normalizeHistoryRecord);
+  return page && limit ? { data: formattedData, count } : formattedData;
 };
 
 const getRentalsByUserId = async (userId, options = {}) => {
