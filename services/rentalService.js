@@ -4,7 +4,7 @@ const RENTALS_TABLE = 'rentals';
 const VEHICLES_TABLE = 'vehicles';
 const RENTAL_DETAILS_VIEW = 'rental_details';
 
-const applyRentalFilters = (query, { status, search, sortBy, sortOrder, page, limit } = {}) => {
+const applyRentalFilters = (query, { status, search, sortBy, sortOrder, limit, offset } = {}) => {
   if (status) {
     query = query.eq('rental_status', status);
   }
@@ -20,8 +20,8 @@ const applyRentalFilters = (query, { status, search, sortBy, sortOrder, page, li
   const ascending = sortOrder === 'asc';
   query = query.order(sortColumn, { ascending });
 
-  if (page && limit) {
-    const from = (page - 1) * limit;
+  if (limit) {
+    const from = offset || 0;
     const to = from + limit - 1;
     query = query.range(from, to);
   }
@@ -29,17 +29,17 @@ const applyRentalFilters = (query, { status, search, sortBy, sortOrder, page, li
   return query;
 };
 
-const getAllRentals = async ({ status, search, sortBy, sortOrder, page, limit } = {}) => {
+const getAllRentals = async ({ status, search, sortBy, sortOrder, limit, offset, page } = {}) => {
   let query = supabase
     .from(RENTAL_DETAILS_VIEW)
-    .select('*', { count: page && limit ? 'exact' : 'estimated' });
+    .select('*', { count: limit ? 'exact' : 'estimated' });
 
-  query = applyRentalFilters(query, { status, search, sortBy, sortOrder, page, limit });
+  query = applyRentalFilters(query, { status, search, sortBy, sortOrder, limit, offset });
 
   const { data, error, count } = await query;
 
   if (error) throw error;
-  return page && limit ? { data, count } : data;
+  return limit ? { data, count } : data;
 };
 
 const getRentalDetailById = async (id) => {
@@ -95,13 +95,13 @@ const normalizeHistoryRecord = (record) => {
   };
 };
 
-const getRentalHistoryByUserId = async (userId, { status, search, sortBy, sortOrder, page, limit, includeActive = false } = {}) => {
+const getRentalHistoryByUserId = async (userId, { status, search, sortBy, sortOrder, limit, offset, includeActive = false } = {}) => {
   let query = supabase
     .from(RENTAL_DETAILS_VIEW)
-    .select('*', { count: page && limit ? 'exact' : 'estimated' })
+    .select('*', { count: limit ? 'exact' : 'estimated' })
     .eq('user_id', userId);
 
-  query = applyRentalFilters(query, { status, search, sortBy, sortOrder, page, limit });
+  query = applyRentalFilters(query, { status, search, sortBy, sortOrder, limit, offset });
 
   if (!status && !includeActive) {
     query = query.neq('rental_status', 'active');
@@ -112,23 +112,23 @@ const getRentalHistoryByUserId = async (userId, { status, search, sortBy, sortOr
   if (error) throw error;
 
   const formattedData = (data || []).map(normalizeHistoryRecord);
-  return page && limit ? { data: formattedData, count } : formattedData;
+  return limit ? { data: formattedData, count } : formattedData;
 };
 
-const getRentalsByVehicleId = async (vehicleId, { status, search, sortBy, sortOrder, page, limit } = {}) => {
+const getRentalsByVehicleId = async (vehicleId, { status, search, sortBy, sortOrder, limit, offset } = {}) => {
   let query = supabase
     .from(RENTAL_DETAILS_VIEW)
-    .select('*', { count: page && limit ? 'exact' : 'estimated' })
+    .select('*', { count: limit ? 'exact' : 'estimated' })
     .eq('vehicle_id', vehicleId);
 
-  query = applyRentalFilters(query, { status, search, sortBy, sortOrder, page, limit });
+  query = applyRentalFilters(query, { status, search, sortBy, sortOrder, limit, offset });
 
   const { data, error, count } = await query;
 
   if (error) throw error;
 
   const formattedData = (data || []).map(normalizeHistoryRecord);
-  return page && limit ? { data: formattedData, count } : formattedData;
+  return limit ? { data: formattedData, count } : formattedData;
 };
 
 const getRentalsByUserId = async (userId, options = {}) => {
@@ -188,17 +188,6 @@ const updateRental = async (id, rentalData) => {
   return data;
 };
 
-const updateVehicleStatus = async (vehicleId, status) => {
-  const { data, error } = await supabase
-    .from(VEHICLES_TABLE)
-    .update({ status })
-    .eq('id', vehicleId)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-};
 
 module.exports = {
   getAllRentals,
@@ -211,6 +200,5 @@ module.exports = {
   getVehicleById,
   getVehicleForVerification,
   createRental,
-  updateRental,
-  updateVehicleStatus
+  updateRental
 };

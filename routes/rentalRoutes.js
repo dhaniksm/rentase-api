@@ -1,5 +1,7 @@
 const express = require('express');
 const rentalController = require('../controllers/rentalController');
+const { authenticateUser } = require('../middleware/authMiddleware');
+const { authorizeAdmin } = require('../middleware/adminMiddleware');
 
 const router = express.Router();
 
@@ -34,7 +36,7 @@ const router = express.Router();
  *       200:
  *         description: List of rentals
  */
-router.get('/', rentalController.getAllRentals);
+router.get('/', authenticateUser, authorizeAdmin, rentalController.getAllRentals);
 
 /**
  * @swagger
@@ -48,7 +50,7 @@ router.get('/', rentalController.getAllRentals);
  *       500:
  *         description: Internal server error
  */
-router.get('/active', rentalController.getActiveRentals);
+router.get('/active', authenticateUser, authorizeAdmin, rentalController.getActiveRentals);
 
 /**
  * @swagger
@@ -71,7 +73,7 @@ router.get('/active', rentalController.getActiveRentals);
  *       500:
  *         description: Internal server error
  */
-router.get('/history/:userId', rentalController.getUserRentalHistory);
+router.get('/history/:userId', authenticateUser, rentalController.getUserRentalHistory);
 
 /**
  * @swagger
@@ -97,7 +99,7 @@ router.get('/history/:userId', rentalController.getUserRentalHistory);
  *       500:
  *         description: Internal server error
  */
-router.get('/user/:userId', rentalController.getUserRentalHistory);
+router.get('/user/:userId', authenticateUser, rentalController.getUserRentalHistory);
 
 /**
  * @swagger
@@ -137,7 +139,7 @@ router.get('/user/:userId', rentalController.getUserRentalHistory);
  *       500:
  *         description: Internal server error
  */
-router.post('/', rentalController.createRental);
+router.post('/', authenticateUser, rentalController.createRental);
 
 /**
  * @swagger
@@ -166,7 +168,7 @@ router.post('/', rentalController.createRental);
  *       500:
  *         description: Internal server error
  */
-router.post('/verify-vehicle', rentalController.verifyVehicle);
+router.post('/verify-vehicle', authenticateUser, authorizeAdmin, rentalController.verifyVehicle);
 
 /**
  * @swagger
@@ -189,7 +191,7 @@ router.post('/verify-vehicle', rentalController.verifyVehicle);
  *       500:
  *         description: Internal server error
  */
-router.get('/:id', rentalController.getRentalById);
+router.get('/:id', authenticateUser, rentalController.getRentalById);
 
 /**
  * @swagger
@@ -214,7 +216,7 @@ router.get('/:id', rentalController.getRentalById);
  *       500:
  *         description: Internal server error
  */
-router.put('/:id/return', rentalController.returnRental);
+router.put('/:id/return', authenticateUser, authorizeAdmin, rentalController.returnRental);
 
 /**
  * @swagger
@@ -239,6 +241,6 @@ router.put('/:id/return', rentalController.returnRental);
  *       500:
  *         description: Internal server error
  */
-router.put('/:id/cancel', rentalController.cancelRental);
+router.put('/:id/cancel', authenticateUser, rentalController.cancelRental);
 
 module.exports = router;

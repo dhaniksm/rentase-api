@@ -1,6 +1,8 @@
 const express = require('express');
 const vehicleController = require('../controllers/vehicleController');
 const { upload, handleUploadError } = require('../middleware/uploadMiddleware');
+const { authenticateUser } = require('../middleware/authMiddleware');
+const { authorizeAdmin } = require('../middleware/adminMiddleware');
 
 const router = express.Router();
 
@@ -83,7 +85,7 @@ router.get('/:id', vehicleController.getVehicleById);
  *       500:
  *         description: Internal server error
  */
-router.post('/', upload.single('image'), handleUploadError, vehicleController.createVehicle);
+router.post('/', authenticateUser, authorizeAdmin, upload.single('image'), handleUploadError, vehicleController.createVehicle);
 
 /**
  * @swagger
@@ -126,7 +128,7 @@ router.post('/', upload.single('image'), handleUploadError, vehicleController.cr
  *       500:
  *         description: Internal server error
  */
-router.put('/:id', upload.single('image'), handleUploadError, vehicleController.updateVehicle);
+router.put('/:id', authenticateUser, authorizeAdmin, upload.single('image'), handleUploadError, vehicleController.updateVehicle);
 
 /**
  * @swagger
@@ -161,7 +163,7 @@ router.put('/:id', upload.single('image'), handleUploadError, vehicleController.
  *       500:
  *         description: Internal server error
  */
-router.patch('/:id/status', vehicleController.updateVehicleStatus);
+router.patch('/:id/status', authenticateUser, authorizeAdmin, vehicleController.updateVehicleStatus);
 
 /**
  * @swagger
@@ -184,6 +186,31 @@ router.patch('/:id/status', vehicleController.updateVehicleStatus);
  *       500:
  *         description: Internal server error
  */
-router.delete('/:id', vehicleController.deleteVehicle);
+router.delete('/:id', authenticateUser, authorizeAdmin, vehicleController.deleteVehicle);
+
+/**
+ * @swagger
+ * /api/vehicles/{id}/history:
+ *   get:
+ *     summary: Get rental history for a vehicle
+ *     tags: [Vehicles]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The vehicle ID
+ *     responses:
+ *       200:
+ *         description: Vehicle rental history retrieved successfully
+ *       404:
+ *         description: Vehicle not found
+ *       500:
+ *         description: Internal server error
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get('/:id/history', authenticateUser, authorizeAdmin, vehicleController.getVehicleRentalHistory);
 
 module.exports = router;

@@ -40,11 +40,10 @@ const sanitizeSearchTerm = (search) => {
   return search.replace(/[(),]/g, ' ').trim();
 };
 
-const getAllVehicles = async ({ status, search } = {}) => {
+const getAllVehicles = async ({ status, search, sortBy = 'created_at', sortOrder = 'desc', limit = 10, offset = 0 } = {}) => {
   let query = supabase
     .from(TABLE_NAME)
-    .select('*')
-    .order('created_at', { ascending: false });
+    .select('*', { count: 'exact' });
 
   if (status) {
     query = query.eq('status', status);
@@ -57,10 +56,13 @@ const getAllVehicles = async ({ status, search } = {}) => {
     );
   }
 
-  const { data, error } = await query;
+  query = query.order(sortBy, { ascending: sortOrder === 'asc' });
+  query = query.range(offset, offset + limit - 1);
+
+  const { data, error, count } = await query;
 
   if (error) throw error;
-  return data;
+  return { data, count };
 };
 
 const getVehicleById = async (id) => {

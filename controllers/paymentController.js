@@ -1,25 +1,29 @@
 const supabase = require('../config/supabase');
 
-/**
- * Controller untuk menangani alur pembayaran rental.
- */
+const sendError = (res, statusCode, message) => {
+  return res.status(statusCode).json({
+    success: false,
+    message
+  });
+};
 
-// A. confirmPayment (User)
-// - Ambil 'id' dari req.params.
-// - Update tabel 'public.rentals' di Supabase: set rental_status = 'pending_verification' (kondisi: jika status saat ini 'unpaid').
-// - Return JSON sukses (200) + data update, atau error.
+const sendSuccess = (res, statusCode, message, data = null) => {
+  const response = {
+    success: true,
+    message
+  };
+  if (data !== null) response.data = data;
+  return res.status(statusCode).json(response);
+};
+
 const confirmPayment = async (req, res) => {
   try {
     const { id } = req.params;
 
     if (!id) {
-      return res.status(400).json({
-        success: false,
-        message: 'Rental ID is required'
-      });
+      return sendError(res, 400, 'Rental ID is required');
     }
 
-    // Update rental status ke 'pending_verification' jika status saat ini adalah 'unpaid'
     const { data, error } = await supabase
       .from('rentals')
       .update({ rental_status: 'pending_verification' })
@@ -28,54 +32,30 @@ const confirmPayment = async (req, res) => {
       .select();
 
     if (error) {
-      return res.status(500).json({
-        success: false,
-        message: error.message
-      });
+      return sendError(res, 500, error.message);
     }
 
     if (!data || data.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Rental not found or status is not unpaid (already confirmed/paid/cancelled)'
-      });
+      return sendError(res, 400, 'Rental not found or status is not unpaid (already confirmed/paid/cancelled)');
     }
 
-    return res.status(200).json({
-      success: true,
-      message: 'Payment confirmation submitted successfully. Waiting for admin verification.',
-      data: data[0]
-    });
+    return sendSuccess(res, 200, 'Payment confirmation submitted successfully. Waiting for admin verification.', data[0]);
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Internal server error'
-    });
+    return sendError(res, 500, error.message || 'Internal server error');
   }
 };
 
-// B. verifyPayment (Admin)
-// - Ambil 'id' dari req.params dan 'payment_method' ('cash'/'transfer') dari req.body.
-// - Update tabel 'public.rentals': set payment_method sesuai input & rental_status = 'paid'.
-// - Ambil 'vehicle_id' dari rental terkait, lalu update tabel 'public.vehicles': set status = 'rented'.
-// - Return JSON sukses (200) atau error.
 const verifyPayment = async (req, res) => {
   try {
     const { id } = req.params;
     const { payment_method } = req.body;
 
     if (!id) {
-      return res.status(400).json({
-        success: false,
-        message: 'Rental ID is required'
-      });
+      return sendError(res, 400, 'Rental ID is required');
     }
 
     if (!payment_method || !['cash', 'transfer'].includes(payment_method)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid or missing payment method. Must be either 'cash' or 'transfer'"
-      });
+      return sendError(res, 400, "Invalid or missing payment method. Must be either 'cash' or 'transfer'");
     }
 
     // Ambil data rental terlebih dahulu untuk mendapatkan vehicle_id
@@ -86,10 +66,7 @@ const verifyPayment = async (req, res) => {
       .single();
 
     if (fetchError || !rental) {
-      return res.status(404).json({
-        success: false,
-        message: 'Rental not found'
-      });
+      return sendError(res, 404, 'Rental not found');
     }
 
     // Update rental status dan payment method
@@ -97,39 +74,18 @@ const verifyPayment = async (req, res) => {
       .from('rentals')
       .update({
         payment_method,
-        rental_status: 'paid'
+        rental_status: 'active',
+        pickup_verified_at: new Date().toISOString()
       })
       .eq('id', id);
 
     if (updateRentalError) {
-      return res.status(500).json({
-        success: false,
-        message: updateRentalError.message
-      });
+      return sendError(res, 500, updateRentalError.message);
     }
 
-    // Update status kendaraan (vehicle) menjadi 'rented'
-    const { error: updateVehicleError } = await supabase
-      .from('vehicles')
-      .update({ status: 'rented' })
-      .eq('id', rental.vehicle_id);
-
-    if (updateVehicleError) {
-      return res.status(500).json({
-        success: false,
-        message: `Rental status updated to paid, but failed to update vehicle status: ${updateVehicleError.message}`
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: 'Payment verified and vehicle status updated to rented successfully'
-    });
+    return sendSuccess(res, 200, 'Payment verified and vehicle status updated to rented successfully');
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Internal server error'
-    });
+    return sendError(res, 500, error.message || 'Internal server error');
   }
 };
 

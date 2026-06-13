@@ -1,6 +1,7 @@
 const rentalService = require('../services/rentalService');
+const { parsePaginationParams, sendPaginatedResponse } = require('../utils/paginationUtil');
 
-const ALLOWED_RENTAL_STATUS = ['active', 'returned', 'late', 'cancelled'];
+const ALLOWED_RENTAL_STATUS = ['unpaid', 'pending_verification', 'active', 'returned', 'late', 'cancelled'];
 const REQUIRED_RENTAL_FIELDS = ['user_id', 'vehicle_id', 'start_date', 'expected_return_date'];
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
@@ -53,69 +54,26 @@ const calculateTotalDays = (startDate, expectedReturnDate) => {
 };
 
 const parsePaginationAndFilterParams = (query) => {
-  const status = normalizeString(query.status);
-  const search = normalizeString(query.search);
-  const sortBy = normalizeString(query.sortBy) || 'created_at';
-  const sortOrder = normalizeString(query.sortOrder) || 'desc';
-
-  let page = query.page ? parseInt(query.page, 10) : undefined;
-  let limit = query.limit ? parseInt(query.limit, 10) : undefined;
-
-  // Validate status if present
-  if (status && !ALLOWED_RENTAL_STATUS.includes(status)) {
-    throw new Error(`status must be one of: ${ALLOWED_RENTAL_STATUS.join(', ')}`);
-  }
-
-  // Validate sortOrder
-  if (sortOrder && !['asc', 'desc'].includes(sortOrder.toLowerCase())) {
-    throw new Error('sortOrder must be either asc or desc');
-  }
-
-  // Validate pagination numbers if present
-  if (page !== undefined && (Number.isNaN(page) || page <= 0)) {
-    throw new Error('page must be a positive integer');
-  }
-  if (limit !== undefined && (Number.isNaN(limit) || limit <= 0)) {
-    throw new Error('limit must be a positive integer');
-  }
-
-  return {
-    status,
-    search,
-    sortBy,
-    sortOrder: sortOrder.toLowerCase(),
-    page,
-    limit
-  };
+  return parsePaginationParams(query);
 };
 
 const getAllRentals = async (req, res) => {
   try {
-    let options;
-    try {
-      options = parsePaginationAndFilterParams(req.query);
-    } catch (validationErr) {
-      return sendError(res, 400, validationErr.message);
+    const { page, limit, search, status, sortBy, sortOrder, offset } = parsePaginationParams(req.query);
+
+    const ALLOWED_STATUS = ['unpaid', 'pending_verification', 'active', 'returned', 'late', 'cancelled'];
+    if (status && !ALLOWED_STATUS.includes(status)) {
+      return sendError(res, 400, `status must be one of: ${ALLOWED_STATUS.join(', ')}`);
     }
 
-    if (options.page && options.limit) {
-      const { data, count } = await rentalService.getAllRentals(options);
-      const totalItems = count || 0;
-      const totalPages = Math.ceil(totalItems / options.limit);
+    const options = { status, search, sortBy, sortOrder, limit, offset };
+    const result = await rentalService.getAllRentals(options);
 
-      return sendSuccess(res, 200, 'Rentals retrieved successfully', data, {
-        pagination: {
-          totalItems,
-          totalPages,
-          currentPage: options.page,
-          limit: options.limit
-        }
-      });
+    if (limit && result.data !== undefined) {
+      return sendPaginatedResponse(res, 200, 'Rentals retrieved successfully', result.data, result.count, page, limit);
     }
 
-    const rentals = await rentalService.getAllRentals(options);
-
-    return sendSuccess(res, 200, 'Rentals retrieved successfully', rentals);
+    return sendSuccess(res, 200, 'Rentals retrieved successfully', result);
   } catch (error) {
     return sendError(res, 500, error.message || 'Failed to get rentals');
   }
@@ -150,34 +108,25 @@ const getUserRentalHistory = async (req, res) => {
     const { userId } = req.params;
 
     if (!isValidUuid(userId)) {
-      return sendError(res, 400, 'userId must be a valid uuid');
+      return sendError(res, 400, 'Invalid user ID format');
     }
 
-    let options;
-    try {
-      options = parsePaginationAndFilterParams(req.query);
-    } catch (validationErr) {
-      return sendError(res, 400, validationErr.message);
+    const { page, limit, search, status, sortBy, sortOrder, offset } = parsePaginationParams(req.query);
+
+    const ALLOWED_STATUS = ['unpaid', 'pending_verification', 'active', 'returned', 'late', 'cancelled'];
+    if (status && !ALLOWED_STATUS.includes(status)) {
+      return sendError(res, 400, `status must be one of: ${ALLOWED_STATUS.join(', ')}`);
     }
 
-    if (options.page && options.limit) {
-      const { data, count } = await rentalService.getRentalsByUserId(userId, options);
-      const totalItems = count || 0;
-      const totalPages = Math.ceil(totalItems / options.limit);
+    const options = { status, search, sortBy, sortOrder, limit, offset };
 
-      return sendSuccess(res, 200, 'User rental history retrieved successfully', data, {
-        pagination: {
-          totalItems,
-          totalPages,
-          currentPage: options.page,
-          limit: options.limit
-        }
-      });
+    const result = await rentalService.getRentalsByUserId(userId, options);
+
+    if (limit && result.data !== undefined) {
+      return sendPaginatedResponse(res, 200, 'User rental history retrieved successfully', result.data, result.count, page, limit);
     }
 
-    const rentals = await rentalService.getRentalsByUserId(userId, options);
-
-    return sendSuccess(res, 200, 'User rental history retrieved successfully', rentals);
+    return sendSuccess(res, 200, 'User rental history retrieved successfully', result);
   } catch (error) {
     return sendError(res, 500, error.message || 'Failed to get user rental history');
   }
@@ -227,11 +176,8 @@ const createRental = async (req, res) => {
       expected_return_date: expectedReturnDate.toISOString(),
       total_days: totalDays,
       total_price: totalPrice,
-      rental_status: 'active',
-      pickup_verified_at: now
+      rental_status: 'unpaid'
     });
-
-    await rentalService.updateVehicleStatus(vehicleId, 'rented');
 
     const rentalDetail = await rentalService.getRentalDetailById(createdRental.id);
 
@@ -243,7 +189,7 @@ const createRental = async (req, res) => {
 
 const returnRental = async (req, res) => {
   try {
-    const rental = await rentalService.getRentalById(rebq.params.id);
+    const rental = await rentalService.getRentalById(req.params.id);
 
     if (!rental) {
       return sendError(res, 404, 'Rental not found');
@@ -253,12 +199,27 @@ const returnRental = async (req, res) => {
       return sendError(res, 400, 'Only active rentals can be returned');
     }
 
-    const now = new Date().toISOString();
+    const now = new Date();
+    const expectedReturnDate = new Date(rental.expected_return_date);
+    let lateFee = 0;
+    let finalStatus = 'returned';
+
+    // Calculate penalty if returned late
+    const diffMs = now.getTime() - expectedReturnDate.getTime();
+    if (diffMs > 0) {
+      const daysLate = Math.ceil(diffMs / DAY_IN_MS);
+      const vehicle = await rentalService.getVehicleById(rental.vehicle_id);
+      lateFee = daysLate * Number(vehicle.price_per_day);
+      finalStatus = 'late';
+    }
+
+    const nowIso = now.toISOString();
 
     await rentalService.updateRental(req.params.id, {
-      actual_return_date: now,
-      return_verified_at: now,
-      rental_status: 'returned'
+      actual_return_date: nowIso,
+      return_verified_at: nowIso,
+      rental_status: finalStatus,
+      late_fee: lateFee
     });
 
     const rentalDetail = await rentalService.getRentalDetailById(req.params.id);
@@ -284,8 +245,6 @@ const cancelRental = async (req, res) => {
     await rentalService.updateRental(req.params.id, {
       rental_status: 'cancelled'
     });
-
-    await rentalService.updateVehicleStatus(rental.vehicle_id, 'available');
 
     const rentalDetail = await rentalService.getRentalDetailById(req.params.id);
 
