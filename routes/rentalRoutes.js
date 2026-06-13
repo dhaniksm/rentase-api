@@ -32,9 +32,6 @@ const router = express.Router();
  *         description: Invalid status value
  *       500:
  *         description: Internal server error
- *     responses:
- *       200:
- *         description: List of rentals
  */
 router.get('/', authenticateUser, authorizeAdmin, rentalController.getAllRentals);
 
@@ -77,9 +74,6 @@ router.get('/history/:userId', authenticateUser, rentalController.getUserRentalH
 
 /**
  * @swagger
- * /api/rentals/user/{userId}:
- *   get:
- *     summary: Get user rental history by User ID (alternative path)
  * /api/rentals/user/{userId}:
  *   get:
  *     summary: Get rental history for a user
