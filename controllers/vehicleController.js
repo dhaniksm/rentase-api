@@ -1,6 +1,7 @@
 const vehicleService = require('../services/vehicleService');
 const rentalService = require('../services/rentalService');
 const { generateVehicleQRCode } = require('../utils/qrGenerator');
+const { parsePaginationParams, sendPaginatedResponse } = require('../utils/paginationUtil');
 
 const REQUIRED_FIELDS = ['vehicle_name', 'brand', 'vehicle_type', 'plate_number', 'price_per_day'];
 const ALLOWED_STATUS = ['available', 'rented', 'maintenance'];
@@ -76,18 +77,17 @@ const validateVehiclePayload = (payload, { requireAll = true } = {}) => {
 
 const getAllVehicles = async (req, res) => {
   try {
-    const { status, search } = req.query;
+    const { page, limit, search, status, sortBy, sortOrder, offset } = parsePaginationParams(req.query);
 
     if (status && !ALLOWED_STATUS.includes(status)) {
       return sendError(res, 400, `status must be one of: ${ALLOWED_STATUS.join(', ')}`);
     }
 
-    const vehicles = await vehicleService.getAllVehicles({
-      status,
-      search: normalizeString(search)
+    const { data, count } = await vehicleService.getAllVehicles({
+      status, search, sortBy, sortOrder, limit, offset
     });
 
-    return sendSuccess(res, 200, 'Vehicles retrieved successfully', vehicles);
+    return sendPaginatedResponse(res, 200, 'Vehicles retrieved successfully', data, count, page, limit);
   } catch (error) {
     return sendError(res, 500, error.message || 'Failed to get vehicles');
   }
@@ -264,54 +264,24 @@ const getVehicleRentalHistory = async (req, res) => {
       return sendError(res, 404, 'Vehicle not found');
     }
 
-    const status = normalizeString(req.query.status);
-    const search = normalizeString(req.query.search);
-    const sortBy = normalizeString(req.query.sortBy) || 'created_at';
-    const sortOrder = normalizeString(req.query.sortOrder) || 'desc';
-
-    let page = req.query.page ? parseInt(req.query.page, 10) : undefined;
-    let limit = req.query.limit ? parseInt(req.query.limit, 10) : undefined;
+    const { page, limit, search, status, sortBy, sortOrder, offset } = parsePaginationParams(req.query);
 
     const ALLOWED_RENTAL_STATUS = ['active', 'returned', 'late', 'cancelled'];
     if (status && !ALLOWED_RENTAL_STATUS.includes(status)) {
       return sendError(res, 400, `status must be one of: ${ALLOWED_RENTAL_STATUS.join(', ')}`);
     }
-    if (sortOrder && !['asc', 'desc'].includes(sortOrder.toLowerCase())) {
-      return sendError(res, 400, 'sortOrder must be either asc or desc');
-    }
-    if (page !== undefined && (Number.isNaN(page) || page <= 0)) {
-      return sendError(res, 400, 'page must be a positive integer');
-    }
-    if (limit !== undefined && (Number.isNaN(limit) || limit <= 0)) {
-      return sendError(res, 400, 'limit must be a positive integer');
-    }
 
-    const options = {
-      status,
-      search,
-      sortBy,
-      sortOrder: sortOrder.toLowerCase(),
-      page,
-      limit
-    };
+    const options = { status, search, sortBy, sortOrder, limit, offset };
 
-    if (page && limit) {
-      const { data, count } = await rentalService.getRentalsByVehicleId(vehicleId, options);
-      const totalItems = count || 0;
-      const totalPages = Math.ceil(totalItems / limit);
-
-      return sendSuccess(res, 200, 'Vehicle rental history retrieved successfully', data, {
-        pagination: {
-          totalItems,
-          totalPages,
-          currentPage: page,
-          limit
-        }
-      });
+    const result = await rentalService.getRentalsByVehicleId(vehicleId, options);
+    
+    // Result might be an array (if no limit) or an object { data, count } if limit is provided.
+    // Our util handles both ways safely if limit is provided.
+    if (limit && result.data !== undefined) {
+       return sendPaginatedResponse(res, 200, 'Vehicle rental history retrieved successfully', result.data, result.count, page, limit);
     }
 
-    const rentals = await rentalService.getRentalsByVehicleId(vehicleId, options);
-    return sendSuccess(res, 200, 'Vehicle rental history retrieved successfully', rentals);
+    return sendSuccess(res, 200, 'Vehicle rental history retrieved successfully', result);
   } catch (error) {
     return sendError(res, 500, error.message || 'Failed to get vehicle rental history');
   }

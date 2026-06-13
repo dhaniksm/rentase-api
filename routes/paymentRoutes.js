@@ -1,5 +1,7 @@
 const express = require('express');
 const paymentController = require('../controllers/paymentController');
+const { authenticateUser } = require('../middleware/authMiddleware');
+const { authorizeAdmin } = require('../middleware/adminMiddleware');
 
 const router = express.Router();
 
@@ -24,7 +26,7 @@ const router = express.Router();
  *       500:
  *         description: Internal server error
  */
-router.patch('/confirm/:id', paymentController.confirmPayment);
+router.patch('/confirm/:id', authenticateUser, paymentController.confirmPayment);
 
 /**
  * @swagger
@@ -62,6 +64,6 @@ router.patch('/confirm/:id', paymentController.confirmPayment);
  *       500:
  *         description: Internal server error
  */
-router.patch('/verify/:id', paymentController.verifyPayment);
+router.patch('/verify/:id', authenticateUser, authorizeAdmin, paymentController.verifyPayment);
 
 module.exports = router;
