@@ -21,8 +21,23 @@ const router = express.Router();
  *     responses:
  *       200:
  *         description: Payment confirmation submitted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Payment confirmed"
+ *                 data:
+ *                   type: object
  *       400:
  *         description: Invalid status or missing ID
+ *       401:
+ *         description: Unauthorized
  *       500:
  *         description: Internal server error
  */
@@ -57,8 +72,25 @@ router.patch('/confirm/:id', authenticateUser, paymentController.confirmPayment)
  *     responses:
  *       200:
  *         description: Payment verified and vehicle status updated to rented successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Payment verified successfully"
+ *                 data:
+ *                   type: object
  *       400:
  *         description: Invalid payment method or missing parameters
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden (Admin only)
  *       404:
  *         description: Rental not found
  *       500:
