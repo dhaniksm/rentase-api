@@ -7,6 +7,8 @@ const rentalRoutes = require('../routes/rentalRoutes');
 const paymentRoutes = require('../routes/paymentRoutes');
 const locationRoutes = require('../routes/locationRoutes');
 const dashboardRoutes = require('../routes/dashboardRoutes');
+const favoriteRoutes = require('../routes/favoriteRoutes');
+
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("../swagger");
 
@@ -19,6 +21,7 @@ app.use('/api/rentals', rentalRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/locations', locationRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/favorites', favoriteRoutes);
 
 app.use(
   "/api-docs",
