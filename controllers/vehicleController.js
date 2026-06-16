@@ -52,6 +52,16 @@ const buildVehiclePayload = (body, { partial = false } = {}) => {
   if (body.description !== undefined) payload.description = normalizeString(body.description) || null;
   if (body.status !== undefined) payload.status = normalizeString(body.status);
 
+  if (!partial) {
+    payload.rating = body.rating !== undefined ? Number(body.rating) : 5;
+    payload.transmission = body.transmission !== undefined ? normalizeString(body.transmission) : 'Otomatis';
+    payload.capacity = body.capacity !== undefined ? Number(body.capacity) : 2;
+  } else {
+    if (body.rating !== undefined) payload.rating = Number(body.rating);
+    if (body.transmission !== undefined) payload.transmission = normalizeString(body.transmission);
+    if (body.capacity !== undefined) payload.capacity = Number(body.capacity);
+  }
+
   return payload;
 };
 
@@ -70,6 +80,14 @@ const validateVehiclePayload = (payload, { requireAll = true } = {}) => {
 
   if (payload.status !== undefined && !ALLOWED_STATUS.includes(payload.status)) {
     return `status must be one of: ${ALLOWED_STATUS.join(', ')}`;
+  }
+
+  if (payload.transmission !== undefined && !['Manual', 'Otomatis'].includes(payload.transmission)) {
+    return 'transmission must be one of: Manual, Otomatis';
+  }
+
+  if (payload.capacity !== undefined && (!Number.isInteger(payload.capacity) || payload.capacity <= 0)) {
+    return 'capacity must be a positive integer';
   }
 
   return null;
@@ -274,11 +292,11 @@ const getVehicleRentalHistory = async (req, res) => {
     const options = { status, search, sortBy, sortOrder, limit, offset };
 
     const result = await rentalService.getRentalsByVehicleId(vehicleId, options);
-    
+
     // Result might be an array (if no limit) or an object { data, count } if limit is provided.
     // Our util handles both ways safely if limit is provided.
     if (limit && result.data !== undefined) {
-       return sendPaginatedResponse(res, 200, 'Vehicle rental history retrieved successfully', result.data, result.count, page, limit);
+      return sendPaginatedResponse(res, 200, 'Vehicle rental history retrieved successfully', result.data, result.count, page, limit);
     }
 
     return sendSuccess(res, 200, 'Vehicle rental history retrieved successfully', result);

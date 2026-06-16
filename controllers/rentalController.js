@@ -238,8 +238,8 @@ const cancelRental = async (req, res) => {
       return sendError(res, 404, 'Rental not found');
     }
 
-    if (rental.rental_status !== 'active') {
-      return sendError(res, 400, 'Only active rentals can be cancelled');
+    if (!['active', 'unpaid', 'pending_verification'].includes(rental.rental_status)) {
+      return sendError(res, 400, 'Only active, unpaid, or pending rentals can be cancelled');
     }
 
     await rentalService.updateRental(req.params.id, {

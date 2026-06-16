@@ -74,6 +74,17 @@ router.get('/:id', vehicleController.getVehicleById);
  *                 type: string
  *               price_per_day:
  *                 type: integer
+ *               rating:
+ *                 type: number
+ *                 format: float
+ *                 description: Vehicle rating (default 5)
+ *               transmission:
+ *                 type: string
+ *                 enum: [Manual, Otomatis]
+ *                 description: Transmission type (default Otomatis)
+ *               capacity:
+ *                 type: integer
+ *                 description: Passenger capacity (default 2)
  *               image:
  *                 type: string
  *                 format: binary
@@ -117,6 +128,17 @@ router.post('/', authenticateUser, authorizeAdmin, upload.single('image'), handl
  *                 type: string
  *               price_per_day:
  *                 type: integer
+ *               rating:
+ *                 type: number
+ *                 format: float
+ *                 description: Vehicle rating (default 5)
+ *               transmission:
+ *                 type: string
+ *                 enum: [Manual, Otomatis]
+ *                 description: Transmission type (default Otomatis)
+ *               capacity:
+ *                 type: integer
+ *                 description: Passenger capacity (default 2)
  *               image:
  *                 type: string
  *                 format: binary
