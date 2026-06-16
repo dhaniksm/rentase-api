@@ -1,7 +1,7 @@
 const rentalService = require('../services/rentalService');
 const { parsePaginationParams, sendPaginatedResponse } = require('../utils/paginationUtil');
 
-const ALLOWED_RENTAL_STATUS = ['unpaid', 'pending_verification', 'active', 'returned', 'late', 'cancelled'];
+const ALLOWED_RENTAL_STATUS = ['unpaid', 'pending_verification', 'paid', 'active', 'returned', 'late', 'cancelled'];
 const REQUIRED_RENTAL_FIELDS = ['user_id', 'vehicle_id', 'start_date', 'expected_return_date'];
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
@@ -61,7 +61,7 @@ const getAllRentals = async (req, res) => {
   try {
     const { page, limit, search, status, sortBy, sortOrder, offset } = parsePaginationParams(req.query);
 
-    const ALLOWED_STATUS = ['unpaid', 'pending_verification', 'active', 'returned', 'late', 'cancelled'];
+    const ALLOWED_STATUS = ['unpaid', 'pending_verification', 'paid', 'active', 'returned', 'late', 'cancelled'];
     if (status && !ALLOWED_STATUS.includes(status)) {
       return sendError(res, 400, `status must be one of: ${ALLOWED_STATUS.join(', ')}`);
     }
