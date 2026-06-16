@@ -118,7 +118,7 @@ const getUserRentalHistory = async (req, res) => {
       return sendError(res, 400, `status must be one of: ${ALLOWED_STATUS.join(', ')}`);
     }
 
-    const options = { status, search, sortBy, sortOrder, limit, offset };
+    const options = { status, search, sortBy, sortOrder, limit, offset, includeActive: true };
 
     const result = await rentalService.getRentalsByUserId(userId, options);
 
