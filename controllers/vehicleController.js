@@ -49,13 +49,15 @@ const buildVehiclePayload = (body, { partial = false } = {}) => {
   if (!partial || body.vehicle_type !== undefined) payload.vehicle_type = normalizeString(body.vehicle_type);
   if (!partial || body.plate_number !== undefined) payload.plate_number = normalizeString(body.plate_number);
   if (!partial || body.price_per_day !== undefined) payload.price_per_day = Number(body.price_per_day);
+  if (!partial || body.chassis_number !== undefined) payload.chassis_number = normalizeString(body.chassis_number);
   if (body.description !== undefined) payload.description = normalizeString(body.description) || null;
   if (body.status !== undefined) payload.status = normalizeString(body.status);
+  if (body.image_url !== undefined) payload.image_url = normalizeString(body.image_url);
 
   if (!partial) {
     payload.rating = body.rating !== undefined ? Number(body.rating) : 5;
     payload.transmission = body.transmission !== undefined ? normalizeString(body.transmission) : 'Otomatis';
-    payload.capacity = body.capacity !== undefined ? Number(body.capacity) : 2;
+    payload.capacity = body.capacity !== undefined ? Number(body.capacity) : 4;
   } else {
     if (body.rating !== undefined) payload.rating = Number(body.rating);
     if (body.transmission !== undefined) payload.transmission = normalizeString(body.transmission);
@@ -134,16 +136,20 @@ const createVehicle = async (req, res) => {
     const validationMessage = validateVehiclePayload(req.body);
     if (validationMessage) return sendError(res, 400, validationMessage);
 
-    if (!req.file) {
+    if (!req.file && !req.body.image_url) {
       return sendError(res, 400, 'image is required');
     }
 
-    const imageUpload = await vehicleService.uploadVehicleImage(req.file);
-    uploadedImagePath = imageUpload.path;
+    let finalImageUrl = req.body.image_url;
+    if (req.file) {
+      const imageUpload = await vehicleService.uploadVehicleImage(req.file);
+      uploadedImagePath = imageUpload.path;
+      finalImageUrl = imageUpload.publicUrl;
+    }
 
     const vehiclePayload = {
       ...buildVehiclePayload(req.body),
-      image_url: imageUpload.publicUrl
+      image_url: finalImageUrl
     };
 
     const createdVehicle = await vehicleService.createVehicle(vehiclePayload);
