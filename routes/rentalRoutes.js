@@ -214,6 +214,31 @@ router.put('/:id/return', authenticateUser, authorizeAdmin, rentalController.ret
 
 /**
  * @swagger
+ * /api/rentals/{id}/pickup:
+ *   put:
+ *     summary: Verify vehicle pickup and activate rental
+ *     tags: [Rentals]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The rental ID
+ *     responses:
+ *       200:
+ *         description: Rental picked up successfully
+ *       400:
+ *         description: Rental not paid or cannot be picked up
+ *       404:
+ *         description: Rental not found
+ *       500:
+ *         description: Internal server error
+ */
+router.put('/:id/pickup', authenticateUser, authorizeAdmin, rentalController.pickupRental);
+
+/**
+ * @swagger
  * /api/rentals/{id}/cancel:
  *   put:
  *     summary: Cancel an active rental

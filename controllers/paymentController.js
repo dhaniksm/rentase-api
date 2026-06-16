@@ -69,13 +69,12 @@ const verifyPayment = async (req, res) => {
       return sendError(res, 404, 'Rental not found');
     }
 
-    // Update rental status dan payment method
+    // Update rental status and payment method
     const { error: updateRentalError } = await supabase
       .from('rentals')
       .update({
         payment_method,
-        rental_status: 'active',
-        pickup_verified_at: new Date().toISOString()
+        rental_status: 'paid'
       })
       .eq('id', id);
 

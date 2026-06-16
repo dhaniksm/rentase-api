@@ -278,6 +278,31 @@ const verifyVehicle = async (req, res) => {
   }
 };
 
+const pickupRental = async (req, res) => {
+  try {
+    const rental = await rentalService.getRentalById(req.params.id);
+
+    if (!rental) {
+      return sendError(res, 404, 'Rental not found');
+    }
+
+    if (rental.rental_status !== 'paid') {
+      return sendError(res, 400, 'Only paid rentals can be picked up');
+    }
+
+    await rentalService.updateRental(req.params.id, {
+      rental_status: 'active',
+      pickup_verified_at: new Date().toISOString()
+    });
+
+    const rentalDetail = await rentalService.getRentalDetailById(req.params.id);
+
+    return sendSuccess(res, 200, 'Rental picked up successfully. Status is now active.', rentalDetail);
+  } catch (error) {
+    return sendError(res, 500, error.message || 'Failed to pickup rental');
+  }
+};
+
 module.exports = {
   getAllRentals,
   getRentalById,
@@ -286,5 +311,6 @@ module.exports = {
   createRental,
   returnRental,
   cancelRental,
-  verifyVehicle
+  verifyVehicle,
+  pickupRental
 };
