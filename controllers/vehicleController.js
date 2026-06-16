@@ -243,12 +243,15 @@ const deleteVehicle = async (req, res) => {
       return sendError(res, 404, 'Vehicle not found');
     }
 
-    await vehicleService.deleteStorageFileByUrl(existingVehicle.image_url);
-    await vehicleService.deleteStorageFileByUrl(existingVehicle.qr_code_url);
+    await vehicleService.deleteStorageFileByUrl(existingVehicle.image_url).catch(() => null);
+    await vehicleService.deleteStorageFileByUrl(existingVehicle.qr_code_url).catch(() => null);
     await vehicleService.deleteVehicleRecord(req.params.id);
 
     return sendSuccess(res, 200, 'Vehicle deleted successfully');
   } catch (error) {
+    if (error.code === '23503') {
+      return sendError(res, 400, 'Kendaraan tidak dapat dihapus karena masih memiliki riwayat sewa.');
+    }
     return sendError(res, 500, error.message || 'Failed to delete vehicle');
   }
 };
